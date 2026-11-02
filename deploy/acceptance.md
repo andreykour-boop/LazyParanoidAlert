@@ -15,17 +15,35 @@
 
 ## 1. Windows-машина (профиль desktop)
 
-### 1.1 Установка службы [7.1]
+### 1.1 Самоустановка одним exe [7.1]
 
-Выполнять в elevated-сессии PowerShell в каталоге агента (рядом `config.json`,
-созданном из `config.example.json`; токен и chat_id — реального бота,
-`log_level: "debug"`).
+На чистой машине (службы siren нет) запустить exe двойным кликом из любого
+каталога (например, Downloads) — UAC спросит сам:
 
 ```powershell
-.\siren-windows-amd64.exe -service install
-.\siren-windows-amd64.exe -service start
-.\siren-windows-amd64.exe -service status   # → running
-Get-Content .\siren.log -Tail 20            # "siren agent started", ловушки запущены
+# после запуска проверить результат самоустановки:
+Test-Path "$env:ProgramFiles\siren\siren.exe"     # -> True (скопировал себя)
+Get-Content "$env:ProgramFiles\siren\config.json" # создан, agent_name = hostname,
+                                                  # token/chat_id — плейсхолдеры
+Get-Service siren                                 # -> Exists, Stopped (ждёт токен)
+netsh advfirewall firewall show rule name="siren traps"  # правило есть,
+                                                  # Program: ...\siren\siren.exe
+```
+
+Ожидания:
+- панель открыта из `%ProgramFiles%\siren`, служба установлена (не запущена);
+- повторный запуск exe ничего не ломает и не дублирует (панель поднимается);
+- ввести token/chat_id в панели → «Сохранить и перезапустить службу» →
+  служба Running;
+- обновление: положить новый exe рядом, запустить — служба перезапустится
+  на новой версии.
+
+Ручной путь (headless, без панели) остаётся рабочим:
+
+```powershell
+.\siren.exe -service install   # firewall-правило создаётся здесь же
+.\siren.exe -service start
+.\siren.exe -service status    # → running
 ```
 
 Ожидания:

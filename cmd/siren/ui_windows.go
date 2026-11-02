@@ -195,6 +195,21 @@ func runInteractive(cfgPath string) (err error) {
 	if secondInstanceSignalsPrimary() {
 		return nil // duplicate: primary opens the window, we leave
 	}
+	// First-run self-install/update runs before the single-instance
+	// check: the mutex and the panel belong to the installed copy, and
+	// a relaunch from the install path must not race the instance
+	// mutex. A failure is advisory — the panel opens anyway and shows
+	// it next to the service state.
+	firstRunErr := func() error {
+		relaunched, err := runFirstRunSetup(cfgPath)
+		if err != nil {
+			return err
+		}
+		if relaunched {
+			os.Exit(0) // the installed copy takes over
+		}
+		return nil
+	}()
 	absCfg, err := filepath.Abs(cfgPath)
 	if err != nil {
 		absCfg = cfgPath
@@ -215,9 +230,15 @@ func runInteractive(cfgPath string) (err error) {
 	}
 	defer a.teardown()
 
-	// The SCM service owns the agent job when it runs: a second pipeline in
-	// this process would fight it for ports and duplicate alerts.
-	if a.cfgErr == nil && !a.serviceRunning() {
+	if firstRunErr != nil {
+		a.setMsg("Самоустановка не завершена: "+firstRunErr.Error(), true)
+	}
+
+	// The SCM service owns the agent job once installed — even when it
+	// is stopped and waiting for credentials. The in-process pipeline
+	// only serves the standalone mode (no service installed): otherwise
+	// the panel would hold the trap ports the service needs.
+	if a.cfgErr == nil && a.serviceNotInstalled() {
 		a.startPipeline()
 	}
 	// The interactive UI needs no console: logs go to the file and panics
@@ -390,6 +411,11 @@ func (a *uiApp) fillFromConfig() {
 		}
 		return
 	}
+	if configIsTemplate(a.cfg) {
+		// Self-install put the service in place; only credentials are
+		// missing — say so instead of a bare state line.
+		a.setMsg("Служба установлена и ждёт token/chat_id — заполните их выше и нажмите «Сохранить и перезапустить службу»", false)
+	}
 	a.agentNameLE.SetText(a.cfg.AgentName)
 	a.tokenLE.SetText(a.cfg.Telegram.Token)
 	a.chatLE.SetText(a.cfg.Telegram.ChatID)
@@ -522,15 +548,19 @@ func (a *uiApp) save() {
 }
 
 // applyChanges restarts whatever runs the agent: this process's pipeline
-// and/or the SCM service.
+// and/or the SCM service. An installed service is brought up even when it
+// was stopped (first run waiting for credentials): saving real token and
+// chat_id is what starts it.
 func (a *uiApp) applyChanges() {
 	if a.pipeline {
 		a.cancel()
 		time.Sleep(700 * time.Millisecond) // let listeners release the ports
 		a.startPipeline()
 	}
-	if st, err := serviceState(); err == nil && st == "работает" {
-		_ = serviceCommand("stop", a.cfgPath, "", "")
+	if st, err := serviceState(); err == nil && st != "не установлена" {
+		if st == "работает" {
+			_ = serviceCommand("stop", a.cfgPath, "", "")
+		}
 		_ = serviceCommand("start", a.cfgPath, "", "")
 	}
 }
@@ -705,6 +735,9 @@ func (a *uiApp) installStart() {
 		if err = serviceCommand("install", a.cfgPath, "", ""); err != nil {
 			a.setMsg("Установка не удалась: "+err.Error(), true)
 			return
+		}
+		if msg := firewallWarn.Load(); msg != nil && *msg != "" {
+			a.setMsg("Служба установлена, но ловушки будут доступны только с этой машины: "+*msg, true)
 		}
 	}
 	if st != "работает" {

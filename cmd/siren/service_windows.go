@@ -135,6 +135,11 @@ func serviceCommand(cmd, cfgPath, account, password string) error {
 			return fmt.Errorf("delete service: %w", err)
 		}
 		fmt.Printf("service %q removed\n", serviceName)
+		if err := firewallRemove(); err != nil {
+			fmt.Printf("note: firewall rule %q not removed (%v)\n", firewallRuleName, err)
+		} else {
+			fmt.Printf("firewall rule %q removed\n", firewallRuleName)
+		}
 	case "start":
 		s, err := m.OpenService(serviceName)
 		if err != nil {
@@ -218,6 +223,15 @@ func serviceInstall(m *mgr.Mgr, cfgPath, account, password string) error {
 		} else {
 			fmt.Printf("  account %q added to \"Event Log Readers\"\n", account)
 		}
+	}
+
+	// Traps must accept inbound connections from other machines; a
+	// failed rule is a warning, not a failed install (the agent still
+	// works locally).
+	if err := firewallEnsure(exe); err != nil {
+		fmt.Printf("  note: firewall rule %q not ensured (%v);\n  traps are reachable only from this host\n", firewallRuleName, err)
+	} else {
+		fmt.Printf("  firewall rule %q ensured (inbound TCP to %s)\n", firewallRuleName, exe)
 	}
 	return nil
 }
