@@ -50,27 +50,27 @@ Telegram. Внутри — сторож здоровья дисков по SMART
 
 ## Быстрый старт
 
-Сборка (Windows, нужен Go и `build.ps1`):
+- **Windows** — скачайте один файл `siren.exe` со страницы
+  [Releases](https://github.com/kur890440-ops/siren/releases) и запустите:
+  UAC → он сам скопирует себя в `%ProgramFiles%\siren`, создаст конфиг,
+  поставит службу с правилом брандмауэра; в пульте останется ввести
+  token/chat_id → «Сохранить и перезапустить службу».
+- **Linux** — скачайте `siren-linux-kit.zip` оттуда же, распакуйте,
+  `sudo ./install.sh`, впишите token/chat_id в `/opt/siren/config.json`,
+  `sudo systemctl enable --now siren`.
 
-```powershell
-.\build.ps1 -Version 0.3.0
-```
-
-Бинарники для обеих платформ появятся в `bin/` — дальше по инструкции из
-`docs/deployment.md`:
-
-- **Windows** — скачать один `siren.exe` и запустить: UAC → он сам скопирует
-  себя в `%ProgramFiles%\siren`, создаст конфиг, поставит службу с правилом
-  брандмауэра; в пульте останется ввести token/chat_id → «Сохранить и
-  перезапустить службу».
-- **Linux** — распаковать кит, `sudo ./install.sh`, вписать token/chat_id в
-  `/opt/siren/config.json`, `sudo systemctl enable --now siren`.
+Подробности и проверка установки — в [docs/deployment.md](docs/deployment.md).
 
 Проверка, что всё живо (со своей машины):
 
 ```bash
 nc 127.0.0.1 21        # баннер FTP-ловушки -> алерт в Telegram
 ```
+
+### Сборка из исходников
+
+Нужен Go и PowerShell (Windows): `.\build.ps1 -Version 0.3.0` — бинарники
+для обеих платформ появятся в `bin/`.
 
 ## Документация
 
