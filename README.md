@@ -46,13 +46,16 @@ Telegram. Внутри — сторож здоровья дисков по SMART
 .\build.ps1 -Version 0.3.0
 ```
 
-Готовые комплекты появятся в `dist/siren-win-kit/` и `dist/siren-linux-kit/` —
-дальше по инструкции из `docs/deployment.md`:
+Бинарники для обеих платформ появятся в `bin/` — дальше по инструкции из
+`docs/deployment.md`:
 
-- **Windows** — распаковать кит, запустить `siren.exe` → UAC → в пульте
-  заполнить token/chat_id → «Установить и запустить».
-- **Linux** — распаковать кит, `sudo ./install.sh`, вписать token/chat_id в
-  `/opt/siren/config.json`, `sudo systemctl enable --now siren`.
+- **Windows** — положить бинарник рядом с `config.example.json` и
+  `install.ps1` из комплекта, запустить → UAC → в пульте заполнить
+  token/chat_id → «Установить и запустить»;
+- **Linux** — рядом с бинарником `siren` положить `config.example.json`,
+  `siren.service` и `install.sh` из комплекта, затем
+  `sudo ./install.sh`, вписать token/chat_id в `/opt/siren/config.json`,
+  `sudo systemctl enable --now siren`.
 
 Проверка, что всё живо (со своей машины):
 
