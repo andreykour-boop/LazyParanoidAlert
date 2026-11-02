@@ -1,0 +1,7 @@
+# Нормализация концов строк: репозиторий хранит LF; шела-скрипты для Linux
+# всегда LF (CRLF сломал бы bash), PowerShell-скрипты — CRLF для Windows.
+* text=auto
+*.sh text eol=lf
+*.service text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf

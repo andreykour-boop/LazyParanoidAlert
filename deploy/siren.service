@@ -1,0 +1,32 @@
+[Unit]
+Description=Siren security agent (honeypot traps, SSH/RDP login sensors, Telegram alerts)
+Documentation=https://example.invalid/siren
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/siren/siren -config /opt/siren/config.json
+WorkingDirectory=/opt/siren
+Restart=on-failure
+RestartSec=5s
+
+# SSH auth facts are read from the journal: membership in systemd-journal
+# grants read access without root. The siren binary must be able to follow
+# `journalctl -f -o json -u <sshd_unit>`.
+SupplementaryGroups=systemd-journal
+
+# Trap ports below 1024 need this single capability; everything else runs
+# unprivileged.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# Hardening: the agent writes only to its own directory (self-signed TLS
+# certificate, log file).
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

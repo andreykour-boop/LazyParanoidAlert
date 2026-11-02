@@ -1,0 +1,18 @@
+{
+  "agent_name": "WIN-PC01",
+  "profile": "desktop",
+  "telegram": {
+    "token": "123456:REPLACE-WITH-BOT-TOKEN",
+    "chat_id": "-1001234567890"
+  },
+  "aggregate_window_seconds": 300,
+  "allowlist": ["192.168.1.10"],
+  "sshd_unit": "ssh",
+  "name_map": {
+    "192.168.1.10": "my-laptop",
+    "192.168.1.55": "pc-ivanov"
+  },
+  "data_dir": "data",
+  "log_level": "info",
+  "log_file": "siren.log"
+}
