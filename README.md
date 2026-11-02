@@ -50,6 +50,10 @@ Telegram. Внутри — сторож здоровья дисков по SMART
 
 ## Быстрый старт
 
+Пульт управления (Windows, ставится сам, службой):
+
+![Пульт управления Siren в Windows](docs/img/siren-win-panel.png)
+
 - **Windows** — скачайте один файл `siren.exe` со страницы
   [Releases](https://github.com/kur890440-ops/siren/releases) и запустите:
   UAC → он сам скопирует себя в `%ProgramFiles%\siren`, создаст конфиг,
