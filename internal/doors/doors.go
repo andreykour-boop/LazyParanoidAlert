@@ -125,6 +125,13 @@ func parseWindowsEventXML(raw []byte) (id int, at time.Time, data map[string]str
 	return ev.System.EventID, ev.System.TimeCreated.SystemTime.Local(), data, nil
 }
 
+// ParseEventXML is the exported form of parseWindowsEventXML for callers
+// outside the package that render their own event XML (the boot sensor's
+// historical System-channel query).
+func ParseEventXML(raw string) (id int, at time.Time, data map[string]string, err error) {
+	return parseWindowsEventXML([]byte(raw))
+}
+
 // windowsEventToEvent converts a rendered Windows event into an agent event.
 // Security 4624/4625 are filtered by Logon Type 10 (remote interactive);
 // 1149 carries the RDP client address. ok reports whether the event belongs

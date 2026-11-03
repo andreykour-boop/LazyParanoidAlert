@@ -17,6 +17,8 @@ import (
 var (
 	modwevtapi       = syscall.NewLazyDLL("wevtapi.dll")
 	procEvtSubscribe = modwevtapi.NewProc("EvtSubscribe")
+	procEvtQuery     = modwevtapi.NewProc("EvtQuery")
+	procEvtNext      = modwevtapi.NewProc("EvtNext")
 	procEvtRender    = modwevtapi.NewProc("EvtRender")
 	procEvtClose     = modwevtapi.NewProc("EvtClose")
 )
@@ -29,7 +31,16 @@ const (
 	evtSubscribeActionError   = 2
 	// EVT_RENDER_FLAGS: render the event as an XML UTF-16 string.
 	evtRenderEventXml = 1
+	// EVT_QUERY_FLAGS: the path argument is a channel name, not a file.
+	evtQueryChannelPath = 1
 )
+
+// isEvtNoMore reports the EvtNext end-of-stream errors: ERROR_NO_MORE_ITEMS
+// (259) when the result set is exhausted, ERROR_NO_MORE_DATA (15007) as the
+// same condition surfaced by some paths.
+func isEvtNoMore(err error) bool {
+	return err == syscall.Errno(259) || err == syscall.Errno(15007)
+}
 
 // errInsufficientBuffer is returned by EvtRender when sizing the output.
 const errInsufficientBuffer = syscall.Errno(122)
@@ -224,6 +235,65 @@ func utf16ToString(s []uint16) string {
 		}
 	}
 	return string(utf16.Decode(s))
+}
+
+// QueryEventsXML runs a one-shot historical query against a channel and
+// returns the matching events rendered as XML strings, newest first (the
+// native order of EvtNext over a channel query). Unlike EvtSubscribe it
+// reads past events, which needs no subscription rights: the System channel
+// is readable by an ordinary user. The query is an XPath over the event
+// schema, e.g. "*[System[(EventID=6006)]]".
+func QueryEventsXML(channel, query string, limit uint32) ([]string, error) {
+	if limit == 0 {
+		return nil, nil
+	}
+	chPtr, err := syscall.UTF16PtrFromString(channel)
+	if err != nil {
+		return nil, fmt.Errorf("EvtQuery: bad channel name: %w", err)
+	}
+	qPtr, err := syscall.UTF16PtrFromString(query)
+	if err != nil {
+		return nil, fmt.Errorf("EvtQuery: bad query: %w", err)
+	}
+	h, _, callErr := procEvtQuery.Call(
+		0, // local session
+		uintptr(unsafe.Pointer(chPtr)),
+		uintptr(unsafe.Pointer(qPtr)),
+		evtQueryChannelPath,
+	)
+	if h == 0 {
+		return nil, fmt.Errorf("EvtQuery %s: %w", channel, callErr)
+	}
+	defer procEvtClose.Call(h)
+
+	var xmls []string
+	buf := make([]uintptr, limit)
+	for len(xmls) < int(limit) {
+		size := uint32(int(limit) - len(xmls))
+		var returned uint32
+		ret, _, callErr := procEvtNext.Call(
+			h,
+			uintptr(size),
+			uintptr(unsafe.Pointer(&buf[0])),
+			0, 0,
+			uintptr(unsafe.Pointer(&returned)),
+		)
+		if ret == 0 && returned == 0 {
+			if isEvtNoMore(callErr) {
+				break // clean end of stream
+			}
+			return xmls, fmt.Errorf("EvtNext: %w", callErr)
+		}
+		for _, hEvent := range buf[:returned] {
+			xmlStr, err := renderEventXML(hEvent)
+			procEvtClose.Call(hEvent)
+			if err != nil {
+				return xmls, fmt.Errorf("render queried event: %w", err)
+			}
+			xmls = append(xmls, xmlStr)
+		}
+	}
+	return xmls, nil
 }
 
 // parseLoop converts rendered XML into agent events until ctx is done.

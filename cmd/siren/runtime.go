@@ -91,16 +91,25 @@ func runAgent(ctx context.Context, cfg *config.Config, log *slog.Logger) error {
 	agentIP := resolveAgentIP()
 	notifier := notify.New(client, agentIP, log)
 
-	// Planned health texts (weekly report, space reminders) go straight to
-	// the delivery queue; nil when the watch is disabled (channel blocks
-	// forever, the notifier just never selects it).
+	// Planned health texts (weekly report, space reminders) and the boot
+	// alert go straight to the delivery queue. The notifier gets nil when
+	// the health watch is disabled (channel blocks forever, the notifier
+	// just never selects it); the boot sensor always uses the real
+	// channel — its alert must survive a disabled health watch.
 	direct := make(chan string, 16)
+	notifDirect := direct
 	healthEnabled := cfg.Health != nil && cfg.Health.Enabled
 	if !healthEnabled {
-		direct = nil
+		notifDirect = nil
 	}
 	run("notify", func(ctx context.Context) error {
-		return notifier.RunWithDirect(ctx, notices, direct)
+		return notifier.RunWithDirect(ctx, notices, notifDirect)
+	})
+
+	// Boot sensor: one-shot at pipeline start, immediate alert on a new
+	// machine boot through the direct channel (D2 of add-boot-events).
+	run("boot", func(ctx context.Context) error {
+		return runBoot(ctx, cfg, agentIP, direct, log)
 	})
 
 	// Disk health watch: collectors per platform, wall-clock schedule,
