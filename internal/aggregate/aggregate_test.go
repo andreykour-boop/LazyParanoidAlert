@@ -79,6 +79,54 @@ func TestSingleEventNoDigest(t *testing.T) {
 	}
 }
 
+// trapEvent builds one trap-connection event to the given trap port.
+func trapEvent(src string, port int) event.Event {
+	return event.Event{
+		Kind:     event.KindTrapConnect,
+		Time:     time.Now(),
+		Machine:  "SRV-02",
+		Protocol: "ftp",
+		SrcIP:    netip.MustParseAddr(src),
+		DstPort:  port,
+	}
+}
+
+func TestDigestListsDistinctPorts(t *testing.T) {
+	a, base := newTestAggregator(5 * time.Minute)
+
+	// A port scan: the first hit (port 21) is delivered immediately, the
+	// rest are counted into the same (source, kind) window.
+	if n := a.Submit(trapEvent("203.0.113.9", 21)); n == nil {
+		t.Fatal("first trap hit must be delivered immediately")
+	}
+	for _, port := range []int{22, 21, 23, 22} {
+		if n := a.Submit(trapEvent("203.0.113.9", port)); n != nil {
+			t.Fatalf("repeat hit on port %d must be counted, not delivered", port)
+		}
+	}
+
+	// Window closes: the digest carries the sorted distinct ports.
+	*base = base.Add(6 * time.Minute)
+	notices := a.Flush()
+	if len(notices) != 1 {
+		t.Fatalf("digests = %d, want 1", len(notices))
+	}
+	n := notices[0]
+	if !n.Digest || n.Count != 5 {
+		t.Errorf("digest = %+v, want count 5", n)
+	}
+	want := []int{21, 22, 23}
+	if len(n.Ports) != len(want) {
+		t.Fatalf("ports = %v, want %v", n.Ports, want)
+	}
+	for i, p := range want {
+		if n.Ports[i] != p {
+			t.Errorf("ports = %v, want %v", n.Ports, want)
+			break
+		}
+	}
+}
+
 func TestIndependentSourcesAndKinds(t *testing.T) {
 	a, _ := newTestAggregator(time.Minute)
 	ev1 := bruteForceEvent("192.168.1.10", 40000)

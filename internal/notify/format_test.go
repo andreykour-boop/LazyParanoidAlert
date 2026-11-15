@@ -84,6 +84,7 @@ func TestFormatDigest(t *testing.T) {
 	last.Time = time.Date(2026, 10, 28, 18, 25, 2, 0, time.UTC)
 	n := aggregate.Notice{
 		First: first, Last: last, Count: 50,
+		Ports:  []int{22},
 		Window: 5 * time.Minute, Digest: true,
 	}
 	got := Format(n)
@@ -94,6 +95,28 @@ func TestFormatDigest(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("digest message missing %q:\n%s", want, got)
 		}
+	}
+	if strings.Contains(got, "порты:") {
+		t.Errorf("single-port digest must not list ports:\n%s", got)
+	}
+}
+
+func TestFormatDigestPortList(t *testing.T) {
+	// A port scan hitting several traps: the digest must name every port,
+	// not just the first event's.
+	ev := baseEvent(event.KindTrapConnect)
+	ev.Protocol, ev.DstPort = "ftp", 21
+	n := aggregate.Notice{
+		First: ev, Last: ev, Count: 7,
+		Ports:  []int{21, 22, 23, 69, 1433, 2049, 3306},
+		Window: 5 * time.Minute, Digest: true,
+	}
+	got := Format(n)
+	if !strings.Contains(got, "порт: 21 (ftp)") {
+		t.Errorf("first event port line wrong:\n%s", got)
+	}
+	if !strings.Contains(got, "порты: 21, 22, 23, 69, 1433, 2049, 3306") {
+		t.Errorf("digest must list all scanned ports:\n%s", got)
 	}
 }
 

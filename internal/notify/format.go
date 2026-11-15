@@ -2,6 +2,7 @@ package notify
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"siren/internal/aggregate"
@@ -79,6 +80,16 @@ func (f Formatter) Format(n aggregate.Notice) string {
 		fmt.Fprintf(&b, "порт: %d (%s)\n", ev.DstPort, ev.Protocol)
 	} else if ev.Protocol != "" {
 		fmt.Fprintf(&b, "порт: ? (%s)\n", ev.Protocol)
+	}
+	// The single-port line above shows only the first event of the window.
+	// A digest over events with different destination ports (a port scan
+	// hitting several traps) names them all.
+	if n.Digest && len(n.Ports) > 1 {
+		parts := make([]string, len(n.Ports))
+		for i, p := range n.Ports {
+			parts[i] = strconv.Itoa(p)
+		}
+		fmt.Fprintf(&b, "порты: %s\n", strings.Join(parts, ", "))
 	}
 
 	if ev.Account != "" {

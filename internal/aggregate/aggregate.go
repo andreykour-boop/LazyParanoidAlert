@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/netip"
+	"sort"
 	"sync"
 	"time"
 
@@ -22,11 +23,15 @@ const defaultDedupTTL = 10 * time.Second
 
 // Notice is one deliverable unit: either the first event of a fresh window
 // (Digest=false, Count=1) or a digest over a closed window (Digest=true,
-// Count=total). First/Last carry the burst boundaries for formatting.
+// Count=total). First/Last carry the burst boundaries for formatting; Ports
+// carries the sorted distinct destination ports seen in the window (a port
+// scan hits several traps — the digest must name them all, not just the
+// first event's port).
 type Notice struct {
 	First  event.Event
 	Last   event.Event
 	Count  int
+	Ports  []int
 	Window time.Duration
 	Digest bool
 }
@@ -51,6 +56,7 @@ type aggWindow struct {
 	first, last event.Event
 	count       int
 	openedAt    time.Time
+	ports       map[int]struct{} // distinct destination ports, for the digest
 }
 
 // Aggregator collapses bursts of similar events into first notifications
@@ -106,9 +112,16 @@ func (a *Aggregator) Submit(ev event.Event) *Notice {
 	if w, ok := a.windows[k]; ok {
 		w.last = ev
 		w.count++
+		if ev.DstPort != 0 {
+			w.ports[ev.DstPort] = struct{}{}
+		}
 		return nil
 	}
-	a.windows[k] = &aggWindow{first: ev, last: ev, count: 1, openedAt: now}
+	ports := map[int]struct{}{}
+	if ev.DstPort != 0 {
+		ports[ev.DstPort] = struct{}{}
+	}
+	a.windows[k] = &aggWindow{first: ev, last: ev, count: 1, openedAt: now, ports: ports}
 	return &Notice{First: ev, Last: ev, Count: 1}
 }
 
@@ -126,10 +139,16 @@ func (a *Aggregator) Flush() []*Notice {
 			continue
 		}
 		if w.count > 1 {
+			ports := make([]int, 0, len(w.ports))
+			for p := range w.ports {
+				ports = append(ports, p)
+			}
+			sort.Ints(ports)
 			notices = append(notices, &Notice{
 				First:  w.first,
 				Last:   w.last,
 				Count:  w.count,
+				Ports:  ports,
 				Window: a.window,
 				Digest: true,
 			})
