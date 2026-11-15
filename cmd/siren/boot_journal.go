@@ -38,13 +38,22 @@ func parseJournalTimestamp(line string) (time.Time, bool) {
 // journalTargetAction names the shutdown fingerprint of a reached systemd
 // target: reboot or power-off. Every initiated restart passes through the
 // reboot target, a plain power-off through the power-off/shutdown target.
+// Both phrasings are accepted: the old systemd logs "Reached target Reboot",
+// modern systemd (v243+) logs "Reached target reboot.target - System Reboot"
+// and finishes via systemd-reboot.service — matching is case-insensitive so
+// either spelling counts.
 func journalTargetAction(line string) string {
+	lc := strings.ToLower(line)
 	switch {
-	case strings.Contains(line, "Reached target Reboot"):
+	case strings.Contains(lc, "reached target reboot"),
+		strings.Contains(lc, "finished systemd-reboot.service"):
 		return "reboot"
-	case strings.Contains(line, "Reached target Power-Off"),
-		strings.Contains(line, "Reached target Shutdown"),
-		strings.Contains(line, "Reached target Halt"):
+	case strings.Contains(lc, "reached target power-off"),
+		strings.Contains(lc, "reached target poweroff"),
+		strings.Contains(lc, "reached target shutdown"),
+		strings.Contains(lc, "reached target halt"),
+		strings.Contains(lc, "finished systemd-poweroff.service"),
+		strings.Contains(lc, "finished systemd-halt.service"):
 		return "shutdown"
 	}
 	return ""

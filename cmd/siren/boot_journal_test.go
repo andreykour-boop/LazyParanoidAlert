@@ -97,6 +97,35 @@ func TestClassifyLinuxSessionDirty(t *testing.T) {
 	}
 }
 
+func TestClassifyLinuxSessionModernSystemdReboot(t *testing.T) {
+	// Real-world tail of a clean `systemctl reboot --no-block` on modern
+	// systemd (Ubuntu 24.04): targets carry the ".target" suffix in the
+	// message, and the sequence ends with systemd-reboot.service. The old
+	// case-sensitive "Reached target Reboot" pattern missed all of it and
+	// classified a clean reboot as dirty.
+	lines := []string{
+		journalFixture(jt100.Add(-10*time.Second), "systemd[2374]", "Reached target exit.target - Exit the Session."),
+		journalFixture(jt100, "systemd[1]", "Reached target umount.target - Unmount All Filesystems."),
+		journalFixture(jt100, "systemd[1]", "Reached target shutdown.target - System Shutdown."),
+		journalFixture(jt100, "systemd[1]", "Reached target final.target - Late Shutdown Services."),
+		journalFixture(jt100, "systemd[1]", "Starting nvidia-disable-aqc-nic.service - Remove AQC nic before shutdown..."),
+		journalFixture(jt100, "systemd[1]", "systemd-reboot.service: Deactivated successfully."),
+		journalFixture(jt100, "systemd[1]", "Finished systemd-reboot.service - System Reboot."),
+		journalFixture(jt100, "systemd[1]", "Reached target reboot.target - System Reboot."),
+		journalFixture(jt100, "systemd-journald[600]", "Journal stopped"),
+	}
+	f := classifyLinuxSession(lines, jtNow)
+	if !f.Known || !f.Clean {
+		t.Errorf("modern clean reboot misclassified: %+v", f)
+	}
+	if f.Action != "reboot" {
+		t.Errorf("action = %q, want reboot (the last marker wins)", f.Action)
+	}
+	if !f.LastAt.Equal(jt100) {
+		t.Errorf("LastAt = %v, want the reboot marker time %v", f.LastAt, jt100)
+	}
+}
+
 func TestJournalSudoShutdownFiltering(t *testing.T) {
 	// A sudo line with an unrelated command must not count as evidence.
 	if _, _, ok := journalSudoShutdown(journalFixture(jt100, "sudo[900]",
