@@ -1,7 +1,7 @@
 # Установка и эксплуатация
 
 Два пути: готовый комплект под платформу (рекомендуется) или сборка из
-исходников. Все команды проверены на Windows 10/11 x64 и Linux amd64
+исходников. Все команды проверены на Windows 10/11 x64 и Linux amd64/arm64
 (systemd).
 
 ## Сборка из исходников
@@ -9,13 +9,16 @@
 Нужен Go 1.2x. На Windows:
 
 ```powershell
-.\build.ps1 -Version 0.3.0
+.\build.ps1 -Version 0.4.0
 ```
 
-В `bin/` появятся `siren-windows-amd64.exe` и `siren-linux-amd64`
-(статический). Windows-комплект — это один файл (exe), Linux-комплект
-собирается из бинарника, `config.example.json`, `install.sh` и юнита
-`siren.service` из [`deploy/`](../deploy).
+В `bin/` появятся `siren-windows-amd64.exe`, `siren-linux-amd64` и
+`siren-linux-arm64` (Linux-бинарники статические). Windows-комплект — это
+один файл (exe); Linux-комплекты (amd64 и arm64) собираются из бинарника,
+`config.example.json`, `install.sh` и юнита `siren.service` из
+[`deploy/`](../deploy), где живут канонические исходники установщиков.
+`install.sh` проверяет архитектуру машины (`EXPECTED_ARCH`) и отказывает
+при несоответствии.
 
 # Windows 10/11 (x64, служба + пульт)
 
@@ -79,7 +82,12 @@ install|start|stop|remove` — установка службы создаёт т
             Начисто: удалить каталог %ProgramFiles%\siren.
 ```
 
-# Linux (amd64 + systemd)
+# Linux (amd64/arm64 + systemd)
+
+Комплект под свою архитектуру: `siren-linux-amd64-kit.zip` для обычных
+серверов, `siren-linux-arm64-kit.zip` для ARM64 (Raspberry Pi 4/5,
+ARM-виртуалки). Установщик проверяет архитектуру машины и отказывает при
+несоответствии.
 
 ## Состав комплекта
 
@@ -108,6 +116,10 @@ journalctl -u siren -f
 Ожидаются строки `siren agent started` (с полем `ip=`), `trap listeners
 started`, `doors: started journalctl reader`. Конфиг — `0600 root`
 (там токен), править через `sudo`.
+
+На типичном ARM-железе (Raspberry Pi и подобные) SMART-датчиков физически
+нет — сторож здоровья честно репортит «инструмент не найден», остальные
+функции работают полностью.
 
 ## Обновление и удаление
 

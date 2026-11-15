@@ -6,8 +6,9 @@
 `openspec/changes/add-security-siren-agent/tasks.md` — после прогона
 отметить соответствующие чекбоксы.
 
-Подготовка: собрать бинарники (`.\build.ps1` → `bin\siren-windows-amd64.exe`
-и `bin\siren-linux-amd64`), завести тестового Telegram-бота (@BotFather →
+Подготовка: собрать бинарники (`.\build.ps1` → `bin\siren-windows-amd64.exe`,
+`bin\siren-linux-amd64` и `bin\siren-linux-arm64`), завести тестового
+Telegram-бота (@BotFather →
 токен), узнать `chat_id` тестового чата (добавить бота, написать ему,
 открыть `https://api.telegram.org/bot<token>/getUpdates` → `chat.id`).
 
@@ -113,7 +114,7 @@ Get-Service siren   # → не найдена
 
 ```bash
 sudo mkdir -p /opt/siren
-sudo cp bin/siren-linux-amd64 /opt/siren/siren
+sudo cp bin/siren-linux-amd64 /opt/siren/siren    # на ARM64: bin/siren-linux-arm64
 sudo cp config.example.json /opt/siren/config.json   # токен бота, chat_id
 sudo cp deploy/siren.service /etc/systemd/system/siren.service
 sudo systemctl daemon-reload

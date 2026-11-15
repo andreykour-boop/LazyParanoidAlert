@@ -1,4 +1,5 @@
-# Builds the siren agent for both target platforms into bin\.
+# Builds the siren agent for the target platforms into bin\:
+# windows/amd64, linux/amd64, linux/arm64.
 # Usage: .\build.ps1 [-Version 0.1.0]
 param(
     [string]$Version = "0.1.0-dev"
@@ -35,8 +36,13 @@ $env:GOARCH = "amd64"
 if ($LASTEXITCODE -ne 0) { throw "windows build failed" }
 
 $env:GOOS = "linux"
+$env:GOARCH = "amd64"
 & $go build -trimpath -ldflags $ldflags -o "bin\siren-linux-amd64" ".\cmd\siren"
-if ($LASTEXITCODE -ne 0) { throw "linux build failed" }
+if ($LASTEXITCODE -ne 0) { throw "linux/amd64 build failed" }
+
+$env:GOARCH = "arm64"
+& $go build -trimpath -ldflags $ldflags -o "bin\siren-linux-arm64" ".\cmd\siren"
+if ($LASTEXITCODE -ne 0) { throw "linux/arm64 build failed" }
 
 Remove-Item Env:GOOS, Env:GOARCH, Env:CGO_ENABLED -ErrorAction SilentlyContinue
 

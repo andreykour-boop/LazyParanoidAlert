@@ -30,7 +30,8 @@
 
 ## Linux (systemd)
 
-Сборка: `make linux` (или `.\build.ps1`) → `bin/siren-linux-amd64`.
+Сборка: `make linux` (или `.\build.ps1`) → `bin/siren-linux-amd64` и
+`bin/siren-linux-arm64`.
 
 ```bash
 sudo mkdir -p /opt/siren
@@ -51,3 +52,23 @@ systemctl status siren
 - Проверка прав до запуска агента:
   `sudo -u nobody journalctl -f -u ssh -n 0` не должен падать по правам
   под учёткой службы (или `systemd-analyze verify /etc/systemd/system/siren.service`).
+
+## Сборка комплектов (dist)
+
+Канонические исходники кита живут в репо: [`install.sh`](install.sh),
+[`uninstall.sh`](uninstall.sh), [`siren.service`](siren.service) — здесь;
+`config.example.json` — в корне. Каталоги и zip в `dist/` — сборочные
+артефакты (gitignored), имена несут архитектуру явно:
+
+| Кит | Бинарник | `EXPECTED_ARCH` |
+|---|---|---|
+| `siren-windows-amd64-kit` | `siren-windows-amd64.exe` | — |
+| `siren-linux-amd64-kit` | `siren-linux-amd64` | `x86_64` |
+| `siren-linux-arm64-kit` | `siren-linux-arm64` | `aarch64` |
+
+Сборка Linux-кита: создать каталог `dist/<имя-кита>`, скопировать туда
+бинарник, `config.example.json`, `siren.service`, `install.sh`,
+`uninstall.sh` и `README.txt`; в копии `install.sh` выставить
+`EXPECTED_ARCH` под архитектуру кита (шапка файла объясняет проверку).
+Ограничение не даёт установить кит на машину с другой архитектурой — ядро
+всё равно не смогло бы исполнить бинарник.

@@ -62,7 +62,8 @@ Telegram. Внутри — сторож здоровья дисков по SMART
   UAC → он сам скопирует себя в `%ProgramFiles%\siren`, создаст конфиг,
   поставит службу с правилом брандмауэра; в пульте останется ввести
   token/chat_id → «Сохранить и перезапустить службу».
-- **Linux** — скачайте `siren-linux-kit.zip` оттуда же, распакуйте,
+- **Linux** — скачайте `siren-linux-amd64-kit.zip` оттуда же (для ARM64 —
+  `siren-linux-arm64-kit.zip`), распакуйте,
   `sudo ./install.sh`, впишите token/chat_id в `/opt/siren/config.json`,
   `sudo systemctl enable --now siren`.
 
