@@ -58,7 +58,7 @@ Telegram. Внутри — сторож здоровья дисков по SMART
 ![Пульт управления Siren в Windows](docs/img/siren-win-panel.png)
 
 - **Windows** — скачайте один файл `siren.exe` со страницы
-  [Releases](https://github.com/kur890440-ops/siren/releases) и запустите:
+  [Releases](https://github.com/andreykour-boop/LazyParanoidAlert/releases) и запустите:
   UAC → он сам скопирует себя в `%ProgramFiles%\siren`, создаст конфиг,
   поставит службу с правилом брандмауэра; в пульте останется ввести
   token/chat_id → «Сохранить и перезапустить службу».
